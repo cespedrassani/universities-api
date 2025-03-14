@@ -1,98 +1,230 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# API de Universidades com NestJS
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Esta API consome a [API de domínios universitários](https://github.com/Hipo/university-domains-list-api) e disponibiliza endpoints para buscar informações sobre universidades ao redor do mundo.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Recursos implementados
 
-## Description
+- Busca de universidades por nome, país e domínio
+- Cache para melhorar performance e reduzir chamadas à API externa
+- Documentação Swagger para facilitar o uso da API
+- Tratamento de erros para melhorar a experiência do usuário
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Pré-requisitos
 
-## Project setup
+- Node.js (v14 ou superior)
+- npm ou yarn
+- Git (opcional, para clonar o repositório)
+
+## Configuração do ambiente
+
+### 1. Clone o repositório ou crie um novo projeto
 
 ```bash
-$ npm install
+# Opção 1: Clonar o repositório (se você já tem um repositório existente)
+git clone <seu-repositorio>
+cd university-api
+
+# Opção 2: Criar um novo projeto com NestJS CLI
+npm i -g @nestjs/cli
+nest new university-api
+cd university-api
 ```
 
-## Compile and run the project
+### 2. Instalar dependências necessárias
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install axios @nestjs/swagger swagger-ui-express @nestjs/cache-manager cache-manager
 ```
 
-## Run tests
+### 3. Estrutura do projeto
+
+Certifique-se que seu projeto siga esta estrutura de diretórios:
+
+```
+university-api/
+├── src/
+│   ├── university/
+│   │   ├── dto/
+│   │   │   └── university.dto.ts    # DTOs com decoradores Swagger
+│   │   ├── university.controller.ts # Controladores com decoradores Swagger
+│   │   ├── university.service.ts    # Serviços com implementação de cache
+│   │   └── university.module.ts     # Módulo com configuração de cache
+│   ├── app.module.ts                # Módulo principal da aplicação
+│   └── main.ts                      # Configuração do Swagger
+└── package.json                     # Dependências do projeto
+```
+
+Crie os diretórios necessários caso não existam:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+mkdir -p src/university/dto
 ```
 
-## Deployment
+### 4. Configurar os arquivos do projeto
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Copie os códigos fornecidos para cada arquivo correspondente na estrutura do projeto. Preste atenção especial às seguintes configurações:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- **main.ts**: Contém a configuração do Swagger
+- **university.module.ts**: Contém a configuração do cache
+- **university.service.ts**: Implementa a lógica de cache para as requisições
+- **university.controller.ts**: Adiciona os decoradores do Swagger
+
+## Executando a aplicação
+
+### Modo de desenvolvimento
 
 ```bash
-$ npm install -g mau
-$ mau deploy
+# Iniciar o servidor em modo de desenvolvimento com hot-reload
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Modo de produção
 
-## Resources
+```bash
+# Compilar o projeto
+npm run build
 
-Check out a few resources that may come in handy when working with NestJS:
+# Iniciar em modo de produção
+npm run start:prod
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Usando Docker (opcional)
 
-## Support
+Se preferir usar Docker, você pode construir e executar a aplicação em um contêiner:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+# Construir a imagem Docker
+docker build -t university-api .
 
-## Stay in touch
+# Executar o contêiner
+docker run -p 3000:3000 university-api
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Acessando a aplicação
 
-## License
+Após iniciar o servidor:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- A API estará disponível em: http://localhost:3000
+- A documentação Swagger estará disponível em: http://localhost:3000/api
+
+## Endpoints disponíveis
+
+### 1. Obter todas as universidades
+```
+GET /universities
+```
+
+### 2. Busca flexível (usando qualquer combinação de parâmetros)
+```
+GET /universities/search?name=&country=&domain=
+```
+
+### 3. Buscar universidades por nome
+```
+GET /universities/search/name?name=Harvard
+```
+
+### 4. Buscar universidades por país
+```
+GET /universities/search/country?country=Brazil
+```
+**Observação**: Use o nome do país em inglês (Brazil, United States, etc.)
+
+### 5. Buscar universidades por domínio
+```
+GET /universities/search/domain?domain=harvard.edu
+```
+
+## Exemplos de uso
+
+### Buscar universidades com "technology" no nome:
+```
+GET http://localhost:3000/universities/search/name?name=technology
+```
+
+### Buscar universidades do Brasil:
+```
+GET http://localhost:3000/universities/search/country?country=Brazil
+```
+
+### Buscar universidades com domínio específico:
+```
+GET http://localhost:3000/universities/search/domain?domain=edu.br
+```
+
+## Monitoramento do cache
+
+Para verificar se o cache está funcionando corretamente, você pode observar o tempo de resposta das requisições:
+
+1. Faça uma primeira requisição a qualquer endpoint
+2. Faça a mesma requisição novamente
+3. A segunda requisição deve ser significativamente mais rápida
+
+## Testando a API pelo Swagger
+
+A interface do Swagger permite testar todos os endpoints da API diretamente do navegador:
+
+1. Acesse http://localhost:3000/api
+2. Escolha um dos endpoints disponíveis
+3. Clique em "Try it out"
+4. Preencha os parâmetros necessários
+5. Clique em "Execute"
+6. Veja a resposta da API
+
+## Tipos de Testes Implementados
+
+### Testes Unitários
+
+Os testes unitários focam em testar componentes individuais (principalmente serviços) isoladamente de suas dependências externas. Usamos mocks para simular dependências como o cache e chamadas HTTP.
+
+Arquivo principal: `src/university/university.service.spec.ts`
+
+Estes testes verificam:
+- O correto funcionamento do mecanismo de cache
+- As chamadas para a API externa
+- O tratamento adequado de erros
+- A transformação de dados recebidos
+
+### Testes E2E (End-to-End)
+
+Os testes E2E testam o sistema como um todo, incluindo a integração entre controllers, serviços e a camada HTTP. Eles simulam requisições reais à API.
+
+Arquivo principal: `test/university.e2e-spec.ts`
+
+Estes testes verificam:
+- As respostas HTTP corretas (status codes)
+- O formato correto dos dados retornados
+- A integração entre controllers e serviços
+- A validação de parâmetros
+
+## Executando os Testes
+
+### Testes Unitários
+
+```bash
+# Executar todos os testes unitários
+npm run test
+
+# Executar com watch mode (útil durante o desenvolvimento)
+npm run test:watch
+
+# Gerar relatório de cobertura
+npm run test:cov
+```
+
+### Testes E2E
+
+```bash
+# Executar testes E2E
+npm run test:e2e
+```
+
+## Relatório de Cobertura
+
+Ao executar `npm run test:cov`, um relatório de cobertura será gerado na pasta `coverage/`. Você pode abrir o arquivo `coverage/lcov-report/index.html` em um navegador para visualizar detalhes.
+
+O relatório mostra:
+- Porcentagem de linhas cobertas
+- Porcentagem de branches cobertas
+- Porcentagem de funções cobertas
+- Visualização de quais linhas específicas não estão cobertas
