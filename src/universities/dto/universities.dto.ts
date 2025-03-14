@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
-export class UniversityDto {
+export class UniversitiesDto {
   @ApiProperty({ description: 'Nome da universidade' })
   name: string;
 
@@ -20,13 +22,19 @@ export class UniversityDto {
   web_pages: string[];
 }
 
-export class SearchQueryDto {
+export class SearchQueryDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Nome ou parte do nome da universidade' })
+  @IsOptional()
+  @IsString()
   name?: string;
 
   @ApiPropertyOptional({ description: 'País da universidade (em inglês)' })
+  @IsOptional()
+  @IsString()
   country?: string;
 
   @ApiPropertyOptional({ description: 'Domínio ou parte do domínio da universidade' })
+  @IsOptional()
+  @IsString()
   domain?: string;
 }
