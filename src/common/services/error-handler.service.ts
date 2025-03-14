@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { ApiClient } from 'src/common/services/api-client.service';
+import { ApiClient } from '../../common/services/api-client.service';
 
 @Injectable()
 export class ErrorHandlerService {

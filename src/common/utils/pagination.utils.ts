@@ -1,4 +1,4 @@
-import { PaginatedResponseDto } from 'src/common/dto/pagination-response.dto';
+import { PaginatedResponseDto } from '../../common/dto/pagination-response.dto';
 
 export class PaginationUtils {
   static calculateTotalItems(

@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UniversitiesDto, SearchQueryDto } from './dto/universities.dto';
-import { PaginatedResponseDto } from 'src/common/dto/pagination-response.dto';
-import { PaginationUtils } from 'src/common/utils/pagination.utils';
-import { ApiClient } from 'src/common/services/api-client.service';
-import { CacheService } from 'src/common/services/cache.service';
-import { ErrorHandlerService } from 'src/common/services/error-handler.service';
+import { PaginatedResponseDto } from '../common/dto/pagination-response.dto';
+import { PaginationUtils } from '../common/utils/pagination.utils';
+import { ApiClient } from '../common/services/api-client.service';
+import { CacheService } from '../common/services/cache.service';
+import { ErrorHandlerService } from '../common/services/error-handler.service';
 
 @Injectable()
 export class UniversitiesService {

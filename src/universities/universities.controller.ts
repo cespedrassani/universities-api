@@ -2,8 +2,8 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { UniversitiesService } from './universities.service';
 import { UniversitiesDto, SearchQueryDto } from './dto/universities.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiOkResponse } from '@nestjs/swagger';
-import { PaginatedResponseDto } from 'src/common/dto/pagination-response.dto';
-import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { PaginatedResponseDto } from '../common/dto/pagination-response.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @ApiTags('universities')
 @Controller('universities')

@@ -1,332 +1,207 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UniversitiesService } from './universities.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import axios from 'axios';
-import { HttpException } from '@nestjs/common';
-
-jest.mock('axios');
-
-type MockedAxios = {
-  get: jest.Mock;
-  post: jest.Mock;
-  put: jest.Mock;
-  delete: jest.Mock;
-  patch: jest.Mock;
-};
-
-const mockedAxios = axios as unknown as MockedAxios;
+import { ApiClient } from '../common/services/api-client.service';
+import { CacheService } from '../common/services/cache.service';
+import { ErrorHandlerService } from '../common/services/error-handler.service';
+import { PaginationUtils } from '../common/utils/pagination.utils';
+import { PaginatedResponseDto } from '../common/dto/pagination-response.dto';
+import { UniversitiesDto, SearchQueryDto } from './dto/universities.dto';
 
 describe('UniversitiesService', () => {
   let service: UniversitiesService;
-  let cacheManager: { get: jest.Mock; set: jest.Mock };
+  let apiClientMock: jest.Mocked<ApiClient>;
+  let cacheServiceMock: jest.Mocked<CacheService>;
+  let errorHandlerMock: jest.Mocked<ErrorHandlerService>;
+
+  const mockUniversities: UniversitiesDto[] = [
+    {
+      name: 'Universidade de São Paulo',
+      country: 'Brazil',
+      domains: ['usp.br'],
+      web_pages: ['https://www.usp.br'],
+      alpha_two_code: 'BR'
+    },
+    {
+      name: 'Universidade Federal do Rio de Janeiro',
+      country: 'Brazil',
+      domains: ['ufrj.br'],
+      web_pages: ['https://www.ufrj.br'],
+      alpha_two_code: 'BR'
+    }
+  ];
+
+  const mockPaginatedResponse: PaginatedResponseDto<UniversitiesDto> = {
+    items: mockUniversities,
+    meta: {
+      offset: 0,
+      limit: 10,
+      hasMore: true,
+      totalItems: 11
+    }
+  };
 
   beforeEach(async () => {
-    cacheManager = {
+    apiClientMock = {
+      callApi: jest.fn(),
+    } as any;
+
+    cacheServiceMock = {
       get: jest.fn(),
       set: jest.fn(),
-    };
+      getAllKey: jest.fn(),
+      getByNameKey: jest.fn(),
+      getByCountryKey: jest.fn(),
+      getByDomainKey: jest.fn(),
+      getSearchKey: jest.fn(),
+    } as any;
+
+    errorHandlerMock = {
+      handleApiError: jest.fn(),
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UniversitiesService,
-        {
-          provide: CACHE_MANAGER,
-          useValue: cacheManager,
-        },
+        { provide: ApiClient, useValue: apiClientMock },
+        { provide: CacheService, useValue: cacheServiceMock },
+        { provide: ErrorHandlerService, useValue: errorHandlerMock },
       ],
     }).compile();
 
     service = module.get<UniversitiesService>(UniversitiesService);
+
+    jest.spyOn(PaginationUtils, 'getHasMoreParams').mockReturnValue({ offset: 10, limit: 10 });
+    jest.spyOn(PaginationUtils, 'calculateTotalItems').mockReturnValue(2);
+    jest.spyOn(PaginationUtils, 'createPaginatedResponse').mockReturnValue(mockPaginatedResponse);
   });
 
-  it('deve ser definido', () => {
-    expect(service).toBeDefined();
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('findAll', () => {
-    const mockUniversities = [
-      {
-        name: 'universities 1',
-        country: 'Country 1',
-        alpha_two_code: 'C1',
-        domains: ['domain1.edu'],
-        web_pages: ['http://domain1.edu'],
-      },
-    ];
-
-    it('deve retornar dados do cache se disponíveis', async () => {
-      cacheManager.get.mockResolvedValue(mockUniversities);
+    it('should return cached data when available', async () => {
+      const cacheKey = 'all:0:10';
+      cacheServiceMock.getAllKey.mockReturnValue(cacheKey);
+      cacheServiceMock.get.mockResolvedValue(mockPaginatedResponse);
 
       const result = await service.findAll();
 
-      expect(cacheManager.get).toHaveBeenCalledWith('all_universities');
-      expect(mockedAxios.get).not.toHaveBeenCalled();
-      expect(result).toEqual(mockUniversities);
+      expect(cacheServiceMock.getAllKey).toHaveBeenCalledWith(0, 10);
+      expect(cacheServiceMock.get).toHaveBeenCalledWith(cacheKey);
+      expect(apiClientMock.callApi).not.toHaveBeenCalled();
+      expect(cacheServiceMock.set).not.toHaveBeenCalled();
+      expect(result).toEqual(mockPaginatedResponse);
     });
 
-    it('deve buscar dados da API e armazenar no cache se não houver cache', async () => {
-      cacheManager.get.mockResolvedValue(null);
-      mockedAxios.get.mockResolvedValue({ data: mockUniversities });
+    it('should fetch data from API and cache it when cache is empty', async () => {
+      const cacheKey = 'all:0:10';
+      cacheServiceMock.getAllKey.mockReturnValue(cacheKey);
+      cacheServiceMock.get.mockResolvedValue(null);
+      apiClientMock.callApi.mockResolvedValueOnce(mockUniversities);
+      apiClientMock.callApi.mockResolvedValueOnce([]);
 
       const result = await service.findAll();
 
-      expect(cacheManager.get).toHaveBeenCalledWith('all_universities');
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://universities.hipolabs.com/search');
-      expect(cacheManager.set).toHaveBeenCalledWith('all_universities', mockUniversities, 3600);
-      expect(result).toEqual(mockUniversities);
+      expect(cacheServiceMock.get).toHaveBeenCalledWith(cacheKey);
+      expect(apiClientMock.callApi).toHaveBeenCalledWith('/search', { offset: 0, limit: 10 });
+      expect(apiClientMock.callApi).toHaveBeenCalledWith('/search', { offset: 10, limit: 10 });
+      expect(PaginationUtils.calculateTotalItems).toHaveBeenCalled();
+      expect(PaginationUtils.createPaginatedResponse).toHaveBeenCalledWith(mockUniversities, 2, 0, 10);
+      expect(cacheServiceMock.set).toHaveBeenCalledWith(cacheKey, mockPaginatedResponse);
+      expect(result).toEqual(mockPaginatedResponse);
     });
 
-    it('deve lançar HttpException se a API retornar erro', async () => {
-      cacheManager.get.mockResolvedValue(null);
-      mockedAxios.get.mockRejectedValue(new Error('API Error'));
+    it('should handle errors properly', async () => {
+      const error = new Error('API Error');
+      cacheServiceMock.getAllKey.mockReturnValue('all:0:10');
+      cacheServiceMock.get.mockResolvedValue(null);
+      apiClientMock.callApi.mockRejectedValue(error);
 
-      await expect(service.findAll()).rejects.toThrow(HttpException);
+      const result = await service.findAll();
+
+      expect(errorHandlerMock.handleApiError).toHaveBeenCalledWith(error);
+      expect(result).toEqual(undefined);
     });
   });
 
   describe('searchByName', () => {
-    const mockName = 'Harvard';
-    const mockUniversities = [
-      {
-        name: 'Harvard universities',
-        country: 'United States',
-        alpha_two_code: 'US',
-        domains: ['harvard.edu'],
-        web_pages: ['http://www.harvard.edu'],
-      },
-    ];
+    it('should return cached data when available', async () => {
+      const cacheKey = 'name:USP:0:10';
+      cacheServiceMock.getByNameKey.mockReturnValue(cacheKey);
+      cacheServiceMock.get.mockResolvedValue(mockPaginatedResponse);
 
-    it('deve retornar dados do cache se disponíveis', async () => {
-      cacheManager.get.mockResolvedValue(mockUniversities);
+      const result = await service.searchByName('USP');
 
-      const result = await service.searchByName(mockName);
-
-      expect(cacheManager.get).toHaveBeenCalledWith(`name_${mockName}`);
-      expect(mockedAxios.get).not.toHaveBeenCalled();
-      expect(result).toEqual(mockUniversities);
+      expect(cacheServiceMock.getByNameKey).toHaveBeenCalledWith('USP', 0, 10);
+      expect(cacheServiceMock.get).toHaveBeenCalledWith(cacheKey);
+      expect(apiClientMock.callApi).not.toHaveBeenCalled();
+      expect(result).toEqual(mockPaginatedResponse);
     });
 
-    it('deve buscar dados da API e armazenar no cache se não houver cache', async () => {
-      cacheManager.get.mockResolvedValue(null);
-      mockedAxios.get.mockResolvedValue({ data: mockUniversities });
+    it('should fetch data from API and cache it when cache is empty', async () => {
+      const cacheKey = 'name:USP:0:10';
+      cacheServiceMock.getByNameKey.mockReturnValue(cacheKey);
+      cacheServiceMock.get.mockResolvedValue(null);
+      apiClientMock.callApi.mockResolvedValueOnce(mockUniversities);
+      apiClientMock.callApi.mockResolvedValueOnce([]);
 
-      const result = await service.searchByName(mockName);
+      const result = await service.searchByName('USP');
 
-      expect(cacheManager.get).toHaveBeenCalledWith(`name_${mockName}`);
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://universities.hipolabs.com/search', {
-        params: { name: mockName },
-      });
-      expect(cacheManager.set).toHaveBeenCalledWith(`name_${mockName}`, mockUniversities, 3600);
-      expect(result).toEqual(mockUniversities);
-    });
-
-    it('deve lançar HttpException se a API retornar erro', async () => {
-      cacheManager.get.mockResolvedValue(null);
-      mockedAxios.get.mockRejectedValue(new Error('API Error'));
-
-      await expect(service.searchByName(mockName)).rejects.toThrow(HttpException);
+      expect(cacheServiceMock.get).toHaveBeenCalledWith(cacheKey);
+      expect(apiClientMock.callApi).toHaveBeenCalledWith('/search', { name: 'USP', offset: 0, limit: 10 });
+      expect(cacheServiceMock.set).toHaveBeenCalledWith(cacheKey, mockPaginatedResponse);
+      expect(result).toEqual(mockPaginatedResponse);
     });
   });
 
-  describe('Paginação ', () => {
-    const mockUniversities = Array(30).fill(0).map((_, index) => ({
-      name: `universities ${index + 1}`,
-      country: `Country ${Math.floor(index / 10) + 1}`,
-      alpha_two_code: 'C1',
-      domains: [`domain${index + 1}.edu`],
-      web_pages: [`http://domain${index + 1}.edu`],
-    }));
+  describe('searchByCountry', () => {
+    it('should fetch data from API when cache is empty', async () => {
+      const cacheKey = 'country:Brazil:0:10';
+      cacheServiceMock.getByCountryKey.mockReturnValue(cacheKey);
+      cacheServiceMock.get.mockResolvedValue(null);
+      apiClientMock.callApi.mockResolvedValueOnce(mockUniversities);
+      apiClientMock.callApi.mockResolvedValueOnce([]);
 
-    describe('findAll com paginação', () => {
-      beforeEach(() => {
-        jest.clearAllMocks();
-      });
+      const result = await service.searchByCountry('Brazil');
 
-      it('deve chamar a API externa com os parâmetros de offset e limit corretos', async () => {
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: mockUniversities.slice(10, 20) })
-        );
-
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: mockUniversities.slice(0, 1) })
-        );
-
-        await service.findAll(10, 10);
-
-        expect(mockedAxios.get).toHaveBeenNthCalledWith(
-          1,
-          'http://universities.hipolabs.com/search',
-          expect.objectContaining({
-            params: { offset: 10, limit: 10 }
-          })
-        );
-
-        expect(mockedAxios.get).toHaveBeenNthCalledWith(
-          2,
-          'http://universities.hipolabs.com/search',
-          expect.objectContaining({
-            params: { offset: 20, limit: 1 }
-          })
-        );
-      });
-
-      it('deve retornar dados paginados do cache quando disponíveis', async () => {
-        const mockPaginatedResponse = {
-          items: mockUniversities.slice(5, 15),
-          meta: {
-            offset: 5,
-            limit: 10,
-            totalItems: 30,
-            hasMore: true
-          }
-        };
-
-        cacheManager.get.mockResolvedValue(mockPaginatedResponse);
-
-        const result = await service.findAll(5, 10);
-
-        expect(cacheManager.get).toHaveBeenCalledWith('all_universities_offset5_limit10');
-        expect(mockedAxios.get).not.toHaveBeenCalled();
-        expect(result).toEqual(mockPaginatedResponse);
-      });
-
-      it('deve calcular corretamente hasMore quando há mais itens', async () => {
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: mockUniversities.slice(0, 10) })
-        );
-
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: [mockUniversities[10]] })
-        );
-
-        const result = await service.findAll(0, 10);
-
-        expect(result.meta.hasMore).toBe(true);
-        expect(result.meta.totalItems).toBeGreaterThan(10);
-      });
-
-      it('deve calcular corretamente hasMore quando não há mais itens', async () => {
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: mockUniversities.slice(20, 30) })
-        );
-
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: [] })
-        );
-
-        const result = await service.findAll(20, 10);
-
-        expect(result.meta.hasMore).toBe(false);
-      });
+      expect(apiClientMock.callApi).toHaveBeenCalledWith('/search', { country: 'Brazil', offset: 0, limit: 10 });
+      expect(cacheServiceMock.set).toHaveBeenCalledWith(cacheKey, mockPaginatedResponse);
+      expect(result).toEqual(mockPaginatedResponse);
     });
+  });
 
-    describe('searchByName com paginação', () => {
-      beforeEach(() => {
-        jest.clearAllMocks();
+  describe('search', () => {
+    it('should use all search parameters provided', async () => {
+      const query: SearchQueryDto = {
+        name: 'USP',
+        country: 'Brazil',
+        domain: 'usp.br',
+        offset: 5,
+        limit: 20
+      };
+
+      const cacheKey = 'search:params:5:20';
+      cacheServiceMock.getSearchKey.mockReturnValue(cacheKey);
+      cacheServiceMock.get.mockResolvedValue(null);
+      apiClientMock.callApi.mockResolvedValueOnce(mockUniversities);
+      apiClientMock.callApi.mockResolvedValueOnce([]);
+
+      const result = await service.search(query);
+
+      expect(cacheServiceMock.getSearchKey).toHaveBeenCalledWith(
+        { name: 'USP', country: 'Brazil', domain: 'usp.br' },
+        5,
+        20
+      );
+      expect(apiClientMock.callApi).toHaveBeenCalledWith('/search', {
+        name: 'USP',
+        country: 'Brazil',
+        domain: 'usp.br',
+        offset: 5,
+        limit: 20
       });
-
-      it('deve passar os parâmetros de paginação e busca corretamente', async () => {
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: mockUniversities.slice(0, 5) })
-        );
-
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: [] })
-        );
-
-        await service.searchByName('Technology', 0, 5);
-
-        expect(mockedAxios.get).toHaveBeenNthCalledWith(
-          1,
-          'http://universities.hipolabs.com/search',
-          expect.objectContaining({
-            params: { name: 'Technology', offset: 0, limit: 5 }
-          })
-        );
-      });
-    });
-
-    describe('searchByCountry com paginação', () => {
-      beforeEach(() => {
-        jest.clearAllMocks();
-      });
-
-      it('deve passar os parâmetros de paginação e busca corretamente', async () => {
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: mockUniversities.slice(0, 5) })
-        );
-
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: [] })
-        );
-
-        await service.searchByCountry('Brazil', 0, 5);
-
-        expect(mockedAxios.get).toHaveBeenNthCalledWith(
-          1,
-          'http://universities.hipolabs.com/search',
-          expect.objectContaining({
-            params: { country: 'Brazil', offset: 0, limit: 5 }
-          })
-        );
-      });
-    });
-
-    describe('search com paginação e múltiplos critérios', () => {
-      beforeEach(() => {
-        jest.clearAllMocks();
-      });
-
-      it('deve passar todos os parâmetros de busca e paginação corretamente', async () => {
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: mockUniversities.slice(0, 3) })
-        );
-
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: [] })
-        );
-
-        const queryParams = {
-          name: 'universities',
-          country: 'Brazil',
-          offset: 5,
-          limit: 3
-        };
-
-        await service.search(queryParams);
-
-        expect(mockedAxios.get).toHaveBeenNthCalledWith(
-          1,
-          'http://universities.hipolabs.com/search',
-          expect.objectContaining({
-            params: queryParams
-          })
-        );
-      });
-
-      it('deve usar valores padrão quando offset e limit não são fornecidos', async () => {
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: mockUniversities.slice(0, 10) })
-        );
-
-        mockedAxios.get.mockImplementationOnce(() =>
-          Promise.resolve({ data: [] })
-        );
-
-        const queryParams = {
-          name: 'universities'
-        };
-
-        await service.search(queryParams);
-
-        expect(mockedAxios.get).toHaveBeenNthCalledWith(
-          1,
-          'http://universities.hipolabs.com/search',
-          expect.objectContaining({
-            params: { name: 'universities', offset: 0, limit: 10 }
-          })
-        );
-      });
+      expect(result).toEqual(mockPaginatedResponse);
     });
   });
 });
