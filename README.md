@@ -11,7 +11,7 @@ Esta API consome a [API de domínios universitários](https://github.com/Hipo/un
 
 ## Pré-requisitos
 
-- Node.js (v14 ou superior)
+- Node.js (v18 ou superior)
 - npm ou yarn
 - Git (opcional, para clonar o repositório)
 
