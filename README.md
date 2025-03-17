@@ -20,20 +20,15 @@ Esta API consome a [API de domínios universitários](https://github.com/Hipo/un
 ### 1. Clone o repositório ou crie um novo projeto
 
 ```bash
-# Opção 1: Clonar o repositório (se você já tem um repositório existente)
+# Clonar o repositório (se você já tem um repositório existente)
 git clone <seu-repositorio>
-cd university-api
-
-# Opção 2: Criar um novo projeto com NestJS CLI
-npm i -g @nestjs/cli
-nest new university-api
-cd university-api
+cd universities-api
 ```
 
 ### 2. Instalar dependências necessárias
 
 ```bash
-npm install axios @nestjs/swagger swagger-ui-express @nestjs/cache-manager cache-manager
+npm install
 ```
 
 ### 3. Estrutura do projeto
@@ -41,33 +36,30 @@ npm install axios @nestjs/swagger swagger-ui-express @nestjs/cache-manager cache
 Certifique-se que seu projeto siga esta estrutura de diretórios:
 
 ```
-university-api/
+universities-api/
 ├── src/
-│   ├── university/
+│   ├── common/
 │   │   ├── dto/
-│   │   │   └── university.dto.ts    # DTOs com decoradores Swagger
-│   │   ├── university.controller.ts # Controladores com decoradores Swagger
-│   │   ├── university.service.ts    # Serviços com implementação de cache
-│   │   └── university.module.ts     # Módulo com configuração de cache
-│   ├── app.module.ts                # Módulo principal da aplicação
-│   └── main.ts                      # Configuração do Swagger
-└── package.json                     # Dependências do projeto
+│   │   │   ├── pagination-response.dto.ts
+│   │   │   └── pagination.dto.ts
+│   │   ├── service/
+│   │   │   ├── api-client.service.ts
+│   │   │   ├── cache.service.ts
+│   │   │   └── error-handler.service.ts
+│   │   ├── utils/
+│   │   │   └── pagination.utils.ts
+│   ├── universities/
+│   │   ├── dto/
+│   │   │   └── universities.dto.ts
+│   │   ├── universities.controller.e2e-spec.ts
+│   │   ├── universities.controller.ts
+│   │   ├── universities.service.spec.ts
+│   │   ├── universities.service.ts
+│   │   └── universities.module.ts
+│   ├── app.module.ts
+│   └── main.ts
+└── package.json
 ```
-
-Crie os diretórios necessários caso não existam:
-
-```bash
-mkdir -p src/university/dto
-```
-
-### 4. Configurar os arquivos do projeto
-
-Copie os códigos fornecidos para cada arquivo correspondente na estrutura do projeto. Preste atenção especial às seguintes configurações:
-
-- **main.ts**: Contém a configuração do Swagger
-- **university.module.ts**: Contém a configuração do cache
-- **university.service.ts**: Implementa a lógica de cache para as requisições
-- **university.controller.ts**: Adiciona os decoradores do Swagger
 
 ## Executando a aplicação
 
@@ -94,10 +86,10 @@ Se preferir usar Docker, você pode construir e executar a aplicação em um con
 
 ```bash
 # Construir a imagem Docker
-docker build -t university-api .
+docker build -t universities-api .
 
 # Executar o contêiner
-docker run -p 3000:3000 university-api
+docker run -p 3000:3000 universities-api
 ```
 
 ## Acessando a aplicação
@@ -177,7 +169,7 @@ A interface do Swagger permite testar todos os endpoints da API diretamente do n
 
 Os testes unitários focam em testar componentes individuais (principalmente serviços) isoladamente de suas dependências externas. Usamos mocks para simular dependências como o cache e chamadas HTTP.
 
-Arquivo principal: `src/university/university.service.spec.ts`
+Arquivo principal: `src/universities/universities.service.spec.ts`
 
 Estes testes verificam:
 - O correto funcionamento do mecanismo de cache
@@ -189,7 +181,7 @@ Estes testes verificam:
 
 Os testes E2E testam o sistema como um todo, incluindo a integração entre controllers, serviços e a camada HTTP. Eles simulam requisições reais à API.
 
-Arquivo principal: `test/university.e2e-spec.ts`
+Arquivo principal: `test/universities.e2e-spec.ts`
 
 Estes testes verificam:
 - As respostas HTTP corretas (status codes)
